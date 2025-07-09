@@ -404,12 +404,14 @@ def TMS_Event_Processor(edep_evts, geometry, n_events = 10, verbose = False):
     edep_evts.SetBranchAddress("Event",root.AddressOf(edep_evt)) #I think it is ok to set branch address here, guess we will find out!
     true_hits_info = []
     reco_hits_info = []
+    tally = 0.
     for n in range(n_events):
         edep_evts.GetEntry(n) #the nth event, associated with the nth neutrino vertex
         hit_segments = edep_evt.SegmentDetectors['volTMS'] #fetching the hit_segment vector for this event
         if hit_segments.size() > 0: #checking the size of the hit segment, make sure we have TMS events 
             if verbose:
                 print(f"{hit_segments.size()} TMS hits found in neutrino interaction number {n}, creating truth and rec hit objects") 
+            tally += 1 
             for i in range(hit_segments.size()):
                 hit_true = TMS_hit_simple(hit_segments[i], n, i) #takes the hit segment, the neutrino number, and the hit number
                 hit_reco = TMS_hit_reco(hit_true, geometry)
@@ -447,6 +449,9 @@ def TMS_Event_Processor(edep_evts, geometry, n_events = 10, verbose = False):
                     }
                 true_hits_info.append(hit_truth_data)
                 reco_hits_info.append(hit_reco_data)
+            #a little print output to tell us how processing is going
+            if ((tally % 10) == 0):
+                print(f"Processed {tally} events")
         else:
             if verbose:
                 print(f"NO TMS hits found in neutrino interaction number {n}")
@@ -476,7 +481,7 @@ def main():
 
     #Let's do the detector simulation
     print("About to run detector sim, this could take up to 10 minutes!")
-    events_info = TMS_Event_Processor( edep_evts, geom, n_events = 100) #TODO - allow custom number of events to be run. 
+    events_info = TMS_Event_Processor( edep_evts, geom, n_events = total_events) #TODO - allow custom number of events to be run. 
     print("Successfully finished the detector sim!!")
     truth_hits_info = events_info[0]
     detectorsim_hits_info = events_info[1]

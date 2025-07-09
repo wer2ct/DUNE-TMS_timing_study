@@ -140,11 +140,18 @@ def main():
     groups = CreateTimeGroups(detsim_hit_array, bar_dict) #create timing groups within bars
     merged_hits_list = MergeCoincidentHits(groups, detsim_hit_array) #generate list of merged hits 
     
-    #merged_hit_array stores our new merged hit object |Collective Neutrino #|Collective Hit #|Bar x|Bar y|Bar z|Total PE|Bar Orientation Code|constitutent hit_indexes|
-    merged_hit_array = ak.Array(merged_hits_list) #converts the list of lists to an awkward array for storage. 
+    #merged_hit_array stores our new merged hit object |Collective Neutrino #|Collective Hit #|Bar x|Bar y|Bar z|Total PE|Bar Orientation Code|constituent hit_indexes|
+    merged_hit_ak_array = ak.Array(merged_hits_list) #converts the list of lists to an awkward array for storage. 
     print("Applied coincidence merging!")
 
     #Planning on including time slicing in this script, such that the final output here can be an hdf5 ready for input to SPINE.
+
+    #NOTE - This section is just for troubleshooting, will remove once we have a better output system. 
+    #For now, can output a .npz file that excludes constituent hit indexes, so we can test our time slicer. 
+    trimmed_merged_hits_list = [sublist[:-1] for sublist in merged_hits_list] #cut out the constituent index part. 
+    merged_hit_np_array = np.array(trimmed_merged_hits_list) #convert to array
+    np.savez("/sdf/home/k/ktwall/DUNE-TMS_timing_study/python/test_0002459_merged.npz" , first = merged_hit_np_array) #to access nth hit do merged_hit_np_array[n]
+    
 
 main()
     
