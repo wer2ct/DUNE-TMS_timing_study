@@ -3,7 +3,7 @@
 #Kieran Wall - University of Virginia - June 2025
 #I apologize to any CS folks who may have to read this
 
-#Run - python3 HitWiseEffects.py "edep_sim_file" "output directory"
+#Run - python3 HitWiseEffects.py "edep_sim_file" "output directory" "file #"
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 #Imports
@@ -466,6 +466,7 @@ def main():
     #Initializing
     edep_file = root.TFile(sys.argv[1]) #grabbing the input file (ex. "/sdf/home/t/tanaka/MicroProdN4p1_NDComplex_FHC.spill.full.0002459.EDEPSIM_SPILLS.root")
     output_dir = str(sys.argv[2])
+    file_number = str(sys.argv[3]) #will be the non-zero part of the number
     
     geom = edep_file.Get("EDepSimGeometry") #fetching the geometry from the edep_file
     edep_evts = edep_file.Get("EDepSimEvents") #fetching the events tree (contains the hit segments, etc)
@@ -491,8 +492,8 @@ def main():
     print(f"Output hits array has shape: {np.shape(detsim_events_array)}, Output vtx array has shape: {np.shape(neutrino_vtx_array)}")
 
     #this line is going to need to be tweaked depending on where we are pulling out files! 
-    output_tag = str(edep_file)[64:71]
-    output_file_path = output_dir + 'hitwise_detector_sim_' + output_tag + '.npz'
+    #output_tag = str(edep_file)[64:71]
+    output_file_path = output_dir + 'hitwise_detector_sim_' + file_number + '.npz'
     
     print(f"Saving with file and path: {output_file_path}")
     

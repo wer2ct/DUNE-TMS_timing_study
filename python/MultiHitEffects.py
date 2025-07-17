@@ -1,4 +1,4 @@
-#This script takes as input a npz file produced by HitWiseEffects.py and outputs --tbd--
+#This script takes as input a npz file produced by HitWiseEffects.py, a file number, and outputs a lossy merged hit array to the output directory
 
 #Kieran Wall - University of Virginia - June 2025
 #I apologize to any CS folks who may have to read this
@@ -76,7 +76,7 @@ def CreateTimeGroups(hit_array, bar_dictionary, readout_window = 120):
     return(all_groups)
 
 #This function will do the hit merging, outputs
-def MergeCoincidentHits(all_groups, hit_array):
+def MergeCoincidentHits(all_groups, hit_array, file_no):
     merged_hit_collection = []
     multi_neutrino_groups = 0
     for i in range(len(all_groups)):
@@ -115,8 +115,8 @@ def MergeCoincidentHits(all_groups, hit_array):
         collective_hit_number = hit_numbers[min_time_index]
         collective_index = hit_indexes[min_time_index]
         collective_time = hit_times[min_time_index]
-        merged_hit_info = [collective_neutrino_number, collective_hit_number, bar_x, bar_y, bar_z, collective_time, total_pe, bar_orientation_code, hit_indexes]
-        #merged_hit_info stores our new merged hit object |Collective Neutrino #|Collective Hit #|Bar x|Bar y|Bar z|Total PE|Bar Orientation Code|constitutent hit_indexes|
+        merged_hit_info = [collective_neutrino_number, collective_hit_number, bar_x, bar_y, bar_z, collective_time, total_pe, bar_orientation_code, file_no, hit_indexes]
+        #merged_hit_info stores our new merged hit object |Collective Neutrino #|Collective Hit #|Bar x|Bar y|Bar z| Time |Total PE|Bar Orientation Code|File Number|constitutent hit_indexes|
     
         merged_hit_collection.append(merged_hit_info)
      
@@ -129,8 +129,11 @@ def MergeCoincidentHits(all_groups, hit_array):
 def main():
     print("initializing")
     numpy_file = sys.argv[1] #load in our .npz file
+    output_dir = sys.argv[2] #grab output directory
+    file_number = int(sys.argv[3]) #grab the file number 
     data = np.load(numpy_file) #open it - keyed like neutrino vertices = data['first'], detector sim hit array = data['second']
     neutrino_vertices = data['first']
+    number_of_neutrino_vertices = np.shape(neutrino_vertices)[0]
     detsim_hit_array = data['second'] #detector sim hit array: |neutrino #|hit #|hit x|hit y|hit z|hit T|hit PE|hit orientation code|
     print("Successfully loaded npz file")
     
@@ -138,7 +141,7 @@ def main():
     print("About to apply coincidence merging")
     bar_dict = SortByBar(detsim_hit_array) #sort hits by bar
     groups = CreateTimeGroups(detsim_hit_array, bar_dict) #create timing groups within bars
-    merged_hits_list = MergeCoincidentHits(groups, detsim_hit_array) #generate list of merged hits 
+    merged_hits_list = MergeCoincidentHits(groups, detsim_hit_array, file_number) #generate list of merged hits 
     
     #merged_hit_array stores our new merged hit object |Collective Neutrino #|Collective Hit #|Bar x|Bar y|Bar z|Total PE|Bar Orientation Code|constituent hit_indexes|
     merged_hit_ak_array = ak.Array(merged_hits_list) #converts the list of lists to an awkward array for storage. 
@@ -150,7 +153,7 @@ def main():
     #For now, can output a .npz file that excludes constituent hit indexes, so we can test our time slicer. 
     trimmed_merged_hits_list = [sublist[:-1] for sublist in merged_hits_list] #cut out the constituent index part. 
     merged_hit_np_array = np.array(trimmed_merged_hits_list) #convert to array
-    np.savez("/sdf/home/k/ktwall/DUNE-TMS_timing_study/python/test_0002459_merged.npz" , first = merged_hit_np_array) #to access nth hit do merged_hit_np_array[n]
+    np.savez(output_dir + 'mulithit_detector_sim_lossy_' + str(file_number) + '.npz' , first = merged_hit_np_array, second = np.array(number_of_neutrino_vertices) )
     
 
 main()
