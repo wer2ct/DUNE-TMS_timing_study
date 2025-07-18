@@ -153,7 +153,7 @@ def main():
     #For now, can output a .npz file that excludes constituent hit indexes, so we can test our time slicer. 
     trimmed_merged_hits_list = [sublist[:-1] for sublist in merged_hits_list] #cut out the constituent index part. 
     merged_hit_np_array = np.array(trimmed_merged_hits_list) #convert to array
-    np.savez(output_dir + 'mulithit_detector_sim_lossy_' + str(file_number) + '.npz' , first = merged_hit_np_array, second = np.array(number_of_neutrino_vertices) )
+    np.savez(output_dir + 'multihit_detector_sim_lossy_' + str(file_number) + '.npz' , first = merged_hit_np_array, second = np.array(number_of_neutrino_vertices) )
     
 
 main()

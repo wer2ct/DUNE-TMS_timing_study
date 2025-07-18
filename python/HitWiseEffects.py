@@ -141,17 +141,20 @@ def CreateVtxContainers(tracker_tree):
 
     #Create dictionary with vertex information - for easy use in other parts of the script
     edep_true_neutrino_vtx = [] 
-    vtxs = array('d', [0.0]*4) 
+    vtxs = array('d', [0.0]*5) 
     tracker_tree.SetBranchAddress("EvtVtx", vtxs)
     for i in range(tracker_tree.GetEntries()):
         tracker_tree.GetEntry(i)
         #don't forget to scale positions (tracker inexplicably uses m)
+        interaction_time = vtxs[3] / (10**9) #in seconds, to figure out spill
+        spill = interaction_time // 1.2 #based on a 1.2 second spill separation. This will need to be changed if beam changes. 
         vtx_data = {
             "neutrino_num": i,
             "x": vtxs[0]*1000,
             "y": vtxs[1]*1000,
             "z": vtxs[2]*1000,
             "t": vtxs[3],
+            "spill": spill,
         }
         edep_true_neutrino_vtx.append(vtx_data)
 
@@ -161,14 +164,16 @@ def CreateVtxContainers(tracker_tree):
     neutrino_y = []
     neutrino_z = []
     neutrino_t = []
+    neutrino_spill = []
     for entry in edep_true_neutrino_vtx:
         neutrino_number.append(entry['neutrino_num'])
         neutrino_x.append(entry['x'])
         neutrino_y.append(entry['y'])
         neutrino_z.append(entry['z'])
         neutrino_t.append(entry['t'])
+        neutrino_spill.append(entry['spill'])
 
-    neutrino_vertex_array = np.column_stack((neutrino_number,neutrino_x,neutrino_y,neutrino_z,neutrino_t))
+    neutrino_vertex_array = np.column_stack((neutrino_number,neutrino_x,neutrino_y,neutrino_z,neutrino_t,neutrino_spill))
 
     return(edep_true_neutrino_vtx , neutrino_vertex_array) #output - CreateVtxContainers()[0] = dictionary, CreateVtxContainers()[1] = array
 

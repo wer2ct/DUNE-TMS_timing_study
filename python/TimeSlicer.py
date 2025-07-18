@@ -1,4 +1,6 @@
-#This script takes as input a npz file produced by MultiHitEffects, a file number, and outputs a .npz (??) file 
+#This script takes as input a npz file produced by MultiHitEffects, a file number, time slicer thresholds, and outputs a .root file with the time slices and some basic metrics on the slicer performance
+
+#For deeper analysis and multifile, need to develop an analysis specific jupyter notebook. 
 
 #Kieran Wall - University of Virginia - July 2025
 #I apologize to any CS folks who may have to read this
@@ -191,7 +193,7 @@ def SliceEvaluate(events, number_of_neutrinos, neutrino_PE_array_merged):
     
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
-#Main Function - Take arguments, does useful printing. 
+#Main Function - Take arguments, does useful printing. Apparently this one saves our root file too.
 def main():
     print("initializing")
     #setting up.
