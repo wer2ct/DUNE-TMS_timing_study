@@ -138,7 +138,7 @@ def AssignLabels(dbscan_cluster_list, edep_events):
         for track_group in basic_tracks:
             primary_track_list.append( (int(track_group[0][0]), int(track_group[0][-3])) )
 
-        advanced_tracks = basic_tracks
+        advanced_tracks = basic_tracks  
         advanced_showers = []
 
         #local context, 
@@ -180,22 +180,20 @@ def AssignLabels(dbscan_cluster_list, edep_events):
     
             if added == False:
                 advanced_showers.append(group)
-        #under construction
-        """
+
+        #lets assign labels and concatenate, track = 0, else = 1, also collapse down to (z,x,PE,label)
+        to_stack = []
         if len(advanced_tracks) > 0:
             advanced_tracks_array = np.vstack(advanced_tracks)
+            tracks_labeled = np.column_stack(((advanced_tracks_array[:,4],advanced_tracks_array[:,2],advanced_tracks_array[:,6], np.zeros_like(advanced_tracks_array[:,0]))))
+            to_stack.append(tracks_labeled)
         if len(advanced_showers) > 0:
             advanced_showers_array = np.vstack(advanced_showers)
-        """
-        combined_list = advanced_tracks + advanced_showers #dodges one of them being absent
-        combined_array = np.vstack(combined_list)
+            showers_labeled = np.column_stack(((advanced_showers_array[:,4],advanced_showers_array[:,2],advanced_showers_array[:,6], np.ones_like(advanced_showers_array[:,0]))))
+            to_stack.append(showers_labeled)
         
-        sliced_labeled = np.column_stack(((advanced_tracks_array[:,4],advanced_tracks_array[:,2],advanced_tracks_array[:,6], np.zeros_like(advanced_tracks_array[:,0]))))
-        
-        #lets assign labels and concatenate, track = 0, else = 1, also collapse down to (z,x,PE,label)
-        tracks_labeled = np.column_stack(((advanced_tracks_array[:,4],advanced_tracks_array[:,2],advanced_tracks_array[:,6], np.zeros_like(advanced_tracks_array[:,0]))))
-        showers_labeled = np.column_stack(((advanced_showers_array[:,4],advanced_showers_array[:,2],advanced_showers_array[:,6], np.ones_like(advanced_showers_array[:,0]))))
-        slice_labeled = np.vstack((tracks_labeled,showers_labeled))
+        #stack into an array. 
+        slice_labeled = np.vstack(to_stack)
         #now add to the list
         labeled_slice_list.append(slice_labeled)
 
@@ -206,28 +204,23 @@ def AssignLabels(dbscan_cluster_list, edep_events):
 
 def RemoveDuplicates(labeled_slices_):
     filtered_slices = []
-    for slice_labeled in labeled_slices_:
-        #this little chat gpt tidbit efficiently sweeps for duplicates and keeps ones with label 1 
-        xz = slice_labeled[:, [0, 1]]
-        _, unique_indices, inverse = np.unique(xz, axis=0, return_index=True, return_inverse=True)
+    for slice_labeled in labeled_slices_: #loop over slices
+        xz = slice_labeled[:, [0, 1]] #pull the x and z subarray
+        _, unique_indices, inverse = np.unique(xz, axis=0, return_index=True, return_inverse=True) #get the unique x and z instances (bars). Unique index is first appearance of a unique value, inverse is a mapping back
 
-        # Step 2: prepare output list
         selected_indices = []
 
-        # Step 3: for each group of same (x,z), pick one with label==0 if any
         for group_id in range(len(unique_indices)):
-            group_indices = np.where(inverse == group_id)[0]
-            group = slice_labeled[group_indices]
+            group_indices = np.where(inverse == group_id)[0] #grabbing indices of the actual locations in the slices labeled array using inverse
+            group = slice_labeled[group_indices] #masking to pull subarray (need it to access labels)
     
-            # Find label==0 hit in group, if any
-            label_0_indices = group_indices[slice_labeled[group_indices, 3] == 0]
-            if len(label_0_indices) > 0:
-                selected_indices.append(label_0_indices[0])  # pick first label==0
+            label_0_indices = group_indices[slice_labeled[group_indices, 3] == 0] #grab label 0 indices
+            if len(label_0_indices) > 0: #if more than 1, pick first. This is the step at which the duplicate is eliminated, since will only pull the first instance w/ label 0 if several in the group index. 
+                selected_indices.append(label_0_indices[0]) 
             else:
-                selected_indices.append(group_indices[0])  # pick first if no label==0
+                selected_indices.append(group_indices[0]) #if no zero indices just grab first instance of the group. 
 
-        # Step 4: collect filtered hits
-        filtered_labeled_slice = slice_labeled[selected_indices]
+        filtered_labeled_slice = slice_labeled[selected_indices]  #selecting the subarray of our selected indices, there will be one per bar, w/ priority set on track. 
         filtered_slices.append(filtered_labeled_slice)
     
     return(filtered_slices)
@@ -452,7 +445,7 @@ def main():
     #pull dictionary information to assign labels. Then make graphs
     dbscan_cluster_list_ = AddInfo(dbscan_hits, dbscan_file_dict, neutrino_vtxs_info) #adding info
     print("starting to format into nodes and assigning labels")
-    graph_points_list = AssignLabels(dbscan_cluster_list_, edep_events) #formatting into graphs w/ the new segmentation. 
+    graph_points_list = RemoveDuplicates(AssignLabels(dbscan_cluster_list_, edep_events)) #formatting into graphs w/ the new segmentation. 
     print("completed nodes")
     print("starting to create graphs")
     full_file_graph_list = CreateGraphList(graph_points_list)
