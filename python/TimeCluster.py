@@ -4,7 +4,7 @@
 #Kieran Wall - University of Virginia - July 2025
 #I apologize to any CS folks who may have to read this
 
-#Run - python3 TimeCluster.py "input edep-sim" "inputer merged_hits" "file_number" "fine bandwidth" "output file" "Use Truth Spill Information?" "Apply DBSCAN?"
+#Run - python3 TimeCluster.py "input edep-sim" "inputer merged_hits" "file_number" "fine bandwidth" "output file" "Use Truth Spill Information"
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 #Imports
@@ -112,7 +112,7 @@ def ReturnNeutrinoInfoArray(time_sorted_hits, number_of_neutrinos):
     return(neutrino_PE_array_merged)
 
 #Records basic metrics on the performance of the fine clustering
-def FullFileClusterEvaluate(list_of_spills_, neutrino_truth_array, number_of_neutrinos): #takes an argument like a list of spills with their fine clustering applied
+def FullFileKDEEvaluate(list_of_spills_, neutrino_truth_array, number_of_neutrinos): #takes an argument like a list of spills with their fine clustering applied
     #We can define a containment array, will be looping over both spills and clusters and checking for the best cluster!
     containment_array = np.zeros((number_of_neutrinos,7)) #|nn | hit containment | PE containment | best hit containment spill | best hit containment cluster | best PE containment spill | best PE containment cluster |
     #Initialize with nns
@@ -157,13 +157,13 @@ def FullFileClusterEvaluate(list_of_spills_, neutrino_truth_array, number_of_neu
     return(containment_array, masked_containment_array, cluster_occupancy) #now we return both arrays  
 
 #This function can be called to save our output to an NPZ file, is generic so can save with or without the additioanl DBSCAN label. Tales as input an array of hits, so make sure to convert to that. 
-def SaveToNPZ(segmented_hits, bandwidth_fine_, file_number_, masked_cluster_eval_, cluster_occupancy_, out_dir):
-    outpath = out_dir + 'hits_time_segmented_' + 'band_fine_' + str(bandwidth_fine_) + '_' + str(file_number_) + '.npz' 
+def SaveToNPZ(segmented_hits, bandwidth_fine_, mesh_points_fine_, file_number_, masked_cluster_eval_, cluster_occupancy_, out_dir):
+    outpath = out_dir + 'hits_time_segmented_' + 'band_fine_' + str(bandwidth_fine_) + '_' + 'fine_mesh_' + str(mesh_points_fine_) + '_' + str(file_number_) + '.npz' 
     np.savez(outpath, first= segmented_hits, second = masked_cluster_eval_, third = cluster_occupancy_)
     
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
-#Main Function - Take arguments, does useful printing. Apparently this one saves our root file too.
+#Main Function - Take arguments, does useful printing. Apparently this one saves our file too.
 def main():
     print("initializing")
     
@@ -193,7 +193,7 @@ def main():
     merged_hits_spillnos = AddSpillInfo(SortByTime(merged_hits_array) , full_spill_lookup) #add truth level spill information. 
 
     #Now run KDE on our file to extract spills. Working on optimizing bandwidth and mesh parameters 
-    file_clustered = MakeKDSegments(merged_hits_spillnos, bandwidth = 1000, mesh_points = 2500000, plot = False)
+    file_clustered = MakeKDSegments(merged_hits_spillnos, bandwidth = 1000, mesh_points = 1000000, plot = False)
     print("Spill segmentation is complete!")
     
     #Now do a brief check to see whether the spill segmentation placed some events into the wrong spill. This is not the end of the world will just be an efficiency hit if stuff gets spill across spills. 
@@ -212,23 +212,35 @@ def main():
     
     spills_fine_segmented = [] #this list will store all of the hits with fine segmentation grouped by spill. 
     spills = np.unique(file_clustered[:,int(spill_no_index)]) #grab spill numbers (should always be 0,12 for current sim)
+    mesh_points_fine = 10000
     for spill_no in spills:
         selected_spill = spill_no
-        hits_in_spill = file_clustered[file_clustered[:,int(spill_no_index)] == selected_spill ] #grabbing our desired spill.  
-        time_segmented = MakeKDSegments(hits_in_spill, bandwidth = bandwidth_fine, mesh_points = 5000, plot = False)
+        hits_in_spill = file_clustered[file_clustered[:,int(spill_no_index)] == selected_spill ] #grabbing our desired spill
+
+        #We can include a routine here to scan and eliminate long-lived neutrons.
+        hit_time_range = (max(hits_in_spill[:,5]) - min(hits_in_spill[:,5]))
+        if hit_time_range > 1200000000: #set a threshold at hits occuring a full spill step late. 
+            rel_time = min(hits_in_spill[:,5]) 
+            ceiling_time = rel_time + 1200000000
+            indices = np.where([hits_in_spill[:,5] > ceiling_time])[1][0] #grab index of hits greater than ceiling time.
+            hits_in_spill = np.delete(hits_in_spill, indices, axis = 0)
+            print(f'deleted index {indices} from spill {spill_no}')
+        
+        time_segmented = MakeKDSegments(hits_in_spill, bandwidth = bandwidth_fine, mesh_points = mesh_points_fine, plot = False)
         spills_fine_segmented.append(time_segmented)
+        
     print("Fine segmentation of spills is complete!")
     #Hit State -> (collective_neutrino_number, collective_hit_number, bar_x, bar_y, bar_z, collective_time, total_pe, bar_orientation_code, file_no, truth_spill, clustered_spill, clustered_segment)
     
     #Now let's record some basic metrics on the fine clustering performance
     neutrino_truth_array = ReturnNeutrinoInfoArray(SortByTime(merged_hits_array), n_neutrino_events)
-    unmasked_cluster_eval, masked_cluster_eval, cluster_occupancy = FullFileClusterEvaluate(spills_fine_segmented, neutrino_truth_array, n_neutrino_events)
+    unmasked_cluster_eval, masked_cluster_eval, cluster_occupancy = FullFileKDEEvaluate(spills_fine_segmented, neutrino_truth_array, n_neutrino_events)
     print(f"Fine segmentation hit efficiency {np.mean(masked_cluster_eval[:,2])}, occupancy {np.mean(cluster_occupancy)}") #just a test printout. 
 
     #Now we can save our fully labeled hits to a .npz file -> doing it spill wise would result in jagged array, so can just pull that information in an analysis file with a sort. 
     hits_fully_labeled = np.vstack(spills_fine_segmented)
     
-    SaveToNPZ(hits_fully_labeled, bandwidth_fine, file_number, masked_cluster_eval, cluster_occupancy, output_directory)
+    SaveToNPZ(hits_fully_labeled, bandwidth_fine, mesh_points_fine, file_number, masked_cluster_eval, cluster_occupancy, output_directory)
     
 main()
     
