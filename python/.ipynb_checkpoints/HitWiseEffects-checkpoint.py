@@ -3,7 +3,7 @@
 #Kieran Wall - University of Virginia - June 2025
 #I apologize to any CS folks who may have to read this
 
-#Run - python3 HitWiseEffects.py "edep_sim_file" "output directory"
+#Run - python3 HitWiseEffects.py "edep_sim_file" "output directory" "file #"
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 #Imports
@@ -141,17 +141,20 @@ def CreateVtxContainers(tracker_tree):
 
     #Create dictionary with vertex information - for easy use in other parts of the script
     edep_true_neutrino_vtx = [] 
-    vtxs = array('d', [0.0]*4) 
+    vtxs = array('d', [0.0]*5) 
     tracker_tree.SetBranchAddress("EvtVtx", vtxs)
     for i in range(tracker_tree.GetEntries()):
         tracker_tree.GetEntry(i)
         #don't forget to scale positions (tracker inexplicably uses m)
+        interaction_time = vtxs[3] / (10**9) #in seconds, to figure out spill
+        spill = interaction_time // 1.2 #based on a 1.2 second spill separation. This will need to be changed if beam changes. 
         vtx_data = {
             "neutrino_num": i,
             "x": vtxs[0]*1000,
             "y": vtxs[1]*1000,
             "z": vtxs[2]*1000,
             "t": vtxs[3],
+            "spill": spill,
         }
         edep_true_neutrino_vtx.append(vtx_data)
 
@@ -161,14 +164,16 @@ def CreateVtxContainers(tracker_tree):
     neutrino_y = []
     neutrino_z = []
     neutrino_t = []
+    neutrino_spill = []
     for entry in edep_true_neutrino_vtx:
         neutrino_number.append(entry['neutrino_num'])
         neutrino_x.append(entry['x'])
         neutrino_y.append(entry['y'])
         neutrino_z.append(entry['z'])
         neutrino_t.append(entry['t'])
+        neutrino_spill.append(entry['spill'])
 
-    neutrino_vertex_array = np.column_stack((neutrino_number,neutrino_x,neutrino_y,neutrino_z,neutrino_t))
+    neutrino_vertex_array = np.column_stack((neutrino_number,neutrino_x,neutrino_y,neutrino_z,neutrino_t,neutrino_spill))
 
     return(edep_true_neutrino_vtx , neutrino_vertex_array) #output - CreateVtxContainers()[0] = dictionary, CreateVtxContainers()[1] = array
 
@@ -241,7 +246,6 @@ def ModuleFinder(x,y,z,geom):
 
 # ------ Functions pertaining to the Optical Simulation ------- #
 
-#TODO - just make all these effect functions and class definitions their own python script (for neatness)
 rand_seed = 42 #this is technically a global variable 
 def GetTrueDistanceFromReadout(TMS_hit_reco):
     TMS_Start_Bars_Only = [-3350, -2950]
@@ -466,6 +470,7 @@ def main():
     #Initializing
     edep_file = root.TFile(sys.argv[1]) #grabbing the input file (ex. "/sdf/home/t/tanaka/MicroProdN4p1_NDComplex_FHC.spill.full.0002459.EDEPSIM_SPILLS.root")
     output_dir = str(sys.argv[2])
+    file_number = str(sys.argv[3]) #will be the non-zero part of the number
     
     geom = edep_file.Get("EDepSimGeometry") #fetching the geometry from the edep_file
     edep_evts = edep_file.Get("EDepSimEvents") #fetching the events tree (contains the hit segments, etc)
@@ -491,8 +496,8 @@ def main():
     print(f"Output hits array has shape: {np.shape(detsim_events_array)}, Output vtx array has shape: {np.shape(neutrino_vtx_array)}")
 
     #this line is going to need to be tweaked depending on where we are pulling out files! 
-    output_tag = str(edep_file)[64:71]
-    output_file_path = output_dir + 'hitwise_detector_sim_' + output_tag + '.npz'
+    #output_tag = str(edep_file)[64:71]
+    output_file_path = output_dir + 'hitwise_detector_sim_' + file_number + '.npz'
     
     print(f"Saving with file and path: {output_file_path}")
     

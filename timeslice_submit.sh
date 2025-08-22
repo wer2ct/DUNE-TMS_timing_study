@@ -9,7 +9,7 @@
 #SBATCH --mem-per-cpu=8G
 #SBATCH --time=00:30:00
 #SBATCH --gpus=0
-#SBATCH --array=0-9
+#SBATCH --array=0-60
 #SBATCH --qos=preemptable
 
 apptainer exec \
@@ -17,6 +17,6 @@ apptainer exec \
   --env SLURM_JOB_ID=${SLURM_JOB_ID} \
   -B /sdf \
   /sdf/group/neutrino/images/develop.sif \
-python3 python/TimeSlicer.py /sdf/data/neutrino/summer25/ktwall/tms_timing/multihit/mulithit_detector_sim_lossy_250${SLURM_ARRAY_TASK_ID}.npz /sdf/data/neutrino/summer25/ktwall/tms_timing/time_sliced/ 250${SLURM_ARRAY_TASK_ID} 8 4
+python3 python/TimeSlicer.py /sdf/data/neutrino/summer25/ktwall/tms_timing/multihit/multihit_detector_sim_lossy_25${SLURM_ARRAY_TASK_ID}.npz /sdf/data/neutrino/summer25/ktwall/tms_timing/time_sliced/corrected/ 25${SLURM_ARRAY_TASK_ID} 500 250
 
 

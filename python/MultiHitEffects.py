@@ -78,6 +78,7 @@ def CreateTimeGroups(hit_array, bar_dictionary, readout_window = 120):
 #This function will do the hit merging, outputs
 def MergeCoincidentHits(all_groups, hit_array, file_no):
     merged_hit_collection = []
+    constituent_hit_list = []
     multi_neutrino_groups = 0
     for i in range(len(all_groups)):
         hit_indexes = all_groups[i]
@@ -119,10 +120,15 @@ def MergeCoincidentHits(all_groups, hit_array, file_no):
         #merged_hit_info stores our new merged hit object |Collective Neutrino #|Collective Hit #|Bar x|Bar y|Bar z| Time |Total PE|Bar Orientation Code|File Number|constitutent hit_indexes|
     
         merged_hit_collection.append(merged_hit_info)
-     
+        #lets see if we can add some constituent hit info here:
+        collective_nn_pad = np.full((len(neutrino_numbers), 1), collective_neutrino_number)  
+        collective_hn_pad = np.full((len(neutrino_numbers), 1), collective_hit_number) 
+        constituent_info = np.column_stack( (collective_nn_pad, collective_hn_pad, (np.array(neutrino_numbers)).T, (np.array(hit_numbers)).T) )
+        constituent_hit_list.append(constituent_info)
+    
     print(f"From Hit Merger: Found {multi_neutrino_groups} multi-neutrino groups!")
     print(f"From Hit Merger: Created {len(merged_hit_collection)} Merged Hits out of {len(hit_array)} Raw Hits")
-    return(merged_hit_collection)
+    return(merged_hit_collection, constituent_hit_list)
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 #Main Function - Take arguments, does useful printing. 
@@ -141,19 +147,20 @@ def main():
     print("About to apply coincidence merging")
     bar_dict = SortByBar(detsim_hit_array) #sort hits by bar
     groups = CreateTimeGroups(detsim_hit_array, bar_dict) #create timing groups within bars
-    merged_hits_list = MergeCoincidentHits(groups, detsim_hit_array, file_number) #generate list of merged hits 
+    merged_hits_list, constituent_hits_list = MergeCoincidentHits(groups, detsim_hit_array, file_number) #generate list of merged hits 
     
     #merged_hit_array stores our new merged hit object |Collective Neutrino #|Collective Hit #|Bar x|Bar y|Bar z|Total PE|Bar Orientation Code|constituent hit_indexes|
     merged_hit_ak_array = ak.Array(merged_hits_list) #converts the list of lists to an awkward array for storage. 
     print("Applied coincidence merging!")
-
+    
+    const_hit_array = np.vstack(constituent_hits_list)
     #Planning on including time slicing in this script, such that the final output here can be an hdf5 ready for input to SPINE.
 
     #NOTE - This section is just for troubleshooting, will remove once we have a better output system. 
     #For now, can output a .npz file that excludes constituent hit indexes, so we can test our time slicer. 
     trimmed_merged_hits_list = [sublist[:-1] for sublist in merged_hits_list] #cut out the constituent index part. 
     merged_hit_np_array = np.array(trimmed_merged_hits_list) #convert to array
-    np.savez(output_dir + 'multihit_detector_sim_lossy_' + str(file_number) + '.npz' , first = merged_hit_np_array, second = np.array(number_of_neutrino_vertices) )
+    np.savez(output_dir + 'multihit_detector_sim_lossy_' + str(file_number) + '.npz' , first = merged_hit_np_array, second = np.array(number_of_neutrino_vertices), third = const_hit_array)
     
 
 main()

@@ -20,7 +20,6 @@ import sys
 #Let's perform a DBSCAN run on just this example event to play around with some parameters. 
 def BiasedDBSCAN(seg_hits_, Epsilon, MinCluster, scale_vec): #scale_vec is a tuple like (z_scale, x_scale, t_scale)
     z_scale, x_scale, t_scale = scale_vec
-    #print(f"Scale like z = {z_scale}, x = {x_scale}, t = {t_scale}")
     nns = seg_hits_[:,0]
     hit_xs = seg_hits_[:,2]
     hit_zs = seg_hits_[:,4]

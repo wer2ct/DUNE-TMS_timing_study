@@ -246,7 +246,6 @@ def ModuleFinder(x,y,z,geom):
 
 # ------ Functions pertaining to the Optical Simulation ------- #
 
-#TODO - just make all these effect functions and class definitions their own python script (for neatness)
 rand_seed = 42 #this is technically a global variable 
 def GetTrueDistanceFromReadout(TMS_hit_reco):
     TMS_Start_Bars_Only = [-3350, -2950]
